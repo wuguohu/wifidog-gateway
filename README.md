@@ -16,7 +16,7 @@
 * /system/etc/wifidog-msg.html
 * /system/etc/init.d/wifidog
 
-2. 需要修改wifidog.conf中GatewayInterface为设备对应的网卡名
+2. 需要修改wifidog.conf中GatewayInterface及AuthServer配置
 
 ## 参考
 
