@@ -9,12 +9,14 @@
 
 ## 注意事项
 
-需要修改编译脚本Android.mk，增加编译后文件的拷贝规则，编译后的文件包括：
+1. 需要修改编译脚本Android.mk，增加编译后文件的拷贝规则，编译后的文件包括：
 
 * /system/bin/wifidog
 * /system/etc/wifidog.conf
 * /system/etc/wifidog-msg.html
 * /system/etc/init.d/wifidog
+
+2. 需要修改wifidog.conf中GatewayInterface为设备对应的网卡名
 
 ## 参考
 
