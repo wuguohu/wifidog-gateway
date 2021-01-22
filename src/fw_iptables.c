@@ -279,7 +279,6 @@ iptables_fw_init(void)
      */
 
     /* Create new chains */
-    iptables_do_command("-t mangle -N " CHAIN_TRUSTED);
     iptables_do_command("-t mangle -N " CHAIN_OUTGOING);
     iptables_do_command("-t mangle -N " CHAIN_INCOMING);
     if (got_authdown_ruleset)
@@ -287,14 +286,9 @@ iptables_fw_init(void)
 
     /* Assign links and rules to these new chains */
     iptables_do_command("-t mangle -I PREROUTING 1 -i %s -j " CHAIN_OUTGOING, config->gw_interface);
-    iptables_do_command("-t mangle -I PREROUTING 1 -i %s -j " CHAIN_TRUSTED, config->gw_interface);     //this rule will be inserted before the prior one
     if (got_authdown_ruleset)
         iptables_do_command("-t mangle -I PREROUTING 1 -i %s -j " CHAIN_AUTH_IS_DOWN, config->gw_interface);    //this rule must be last in the chain
     iptables_do_command("-t mangle -I POSTROUTING 1 -o %s -j " CHAIN_INCOMING, config->gw_interface);
-
-    for (p = config->trustedmaclist; p != NULL; p = p->next)
-        iptables_do_command("-t mangle -A " CHAIN_TRUSTED " -m mac --mac-source %s -j MARK --set-mark %d", p->mac,
-                            FW_MARK_KNOWN);
 
     /*
      *
@@ -309,6 +303,8 @@ iptables_fw_init(void)
     iptables_do_command("-t nat -N " CHAIN_GLOBAL);
     iptables_do_command("-t nat -N " CHAIN_UNKNOWN);
     iptables_do_command("-t nat -N " CHAIN_AUTHSERVERS);
+    iptables_do_command("-t nat -N " CHAIN_VALIDATE);
+    iptables_do_command("-t nat -N " CHAIN_KNOWN);
     if (got_authdown_ruleset)
         iptables_do_command("-t nat -N " CHAIN_AUTH_IS_DOWN);
 
@@ -330,9 +326,13 @@ iptables_fw_init(void)
                             proxy_port);
     }
 
-    iptables_do_command("-t nat -A " CHAIN_TO_INTERNET " -m mark --mark 0x%u -j ACCEPT", FW_MARK_KNOWN);
-    iptables_do_command("-t nat -A " CHAIN_TO_INTERNET " -m mark --mark 0x%u -j ACCEPT", FW_MARK_PROBATION);
+    iptables_do_command("-t nat -A " CHAIN_TO_INTERNET " -j " CHAIN_VALIDATE);
+    iptables_do_command("-t nat -A " CHAIN_TO_INTERNET " -j " CHAIN_KNOWN);
     iptables_do_command("-t nat -A " CHAIN_TO_INTERNET " -j " CHAIN_UNKNOWN);
+
+    for (p = config->trustedmaclist; p != NULL; p = p->next)
+        iptables_do_command("-t nat -A " CHAIN_KNOWN " -m mac --mac-source %s -j ACCEPT", p->mac);
+
 
     iptables_do_command("-t nat -A " CHAIN_UNKNOWN " -j " CHAIN_AUTHSERVERS);
     iptables_do_command("-t nat -A " CHAIN_UNKNOWN " -j " CHAIN_GLOBAL);
@@ -387,11 +387,11 @@ iptables_fw_init(void)
     iptables_load_ruleset("filter", FWRULESET_GLOBAL, CHAIN_GLOBAL);
     iptables_load_ruleset("nat", FWRULESET_GLOBAL, CHAIN_GLOBAL);
 
-    iptables_do_command("-t filter -A " CHAIN_TO_INTERNET " -m mark --mark 0x%u -j " CHAIN_VALIDATE, FW_MARK_PROBATION);
-    iptables_load_ruleset("filter", FWRULESET_VALIDATING_USERS, CHAIN_VALIDATE);
+    iptables_do_command("-t filter -A " CHAIN_TO_INTERNET " -j " CHAIN_VALIDATE);
+    iptables_do_command("-t filter -A " CHAIN_TO_INTERNET " -j " CHAIN_KNOWN);
 
-    iptables_do_command("-t filter -A " CHAIN_TO_INTERNET " -m mark --mark 0x%u -j " CHAIN_KNOWN, FW_MARK_KNOWN);
-    iptables_load_ruleset("filter", FWRULESET_KNOWN_USERS, CHAIN_KNOWN);
+    for (p = config->trustedmaclist; p != NULL; p = p->next)
+        iptables_do_command("-t filter -A " CHAIN_KNOWN " -m mac --mac-source %s -j ACCEPT", p->mac);
 
     if (got_authdown_ruleset) {
         iptables_do_command("-t filter -A " CHAIN_TO_INTERNET " -m mark --mark 0x%u -j " CHAIN_AUTH_IS_DOWN,
@@ -427,17 +427,14 @@ iptables_fw_destroy(void)
      *
      */
     debug(LOG_DEBUG, "Destroying chains in the MANGLE table");
-    iptables_fw_destroy_mention("mangle", "PREROUTING", CHAIN_TRUSTED);
     iptables_fw_destroy_mention("mangle", "PREROUTING", CHAIN_OUTGOING);
     if (got_authdown_ruleset)
         iptables_fw_destroy_mention("mangle", "PREROUTING", CHAIN_AUTH_IS_DOWN);
     iptables_fw_destroy_mention("mangle", "POSTROUTING", CHAIN_INCOMING);
-    iptables_do_command("-t mangle -F " CHAIN_TRUSTED);
     iptables_do_command("-t mangle -F " CHAIN_OUTGOING);
     if (got_authdown_ruleset)
         iptables_do_command("-t mangle -F " CHAIN_AUTH_IS_DOWN);
     iptables_do_command("-t mangle -F " CHAIN_INCOMING);
-    iptables_do_command("-t mangle -X " CHAIN_TRUSTED);
     iptables_do_command("-t mangle -X " CHAIN_OUTGOING);
     if (got_authdown_ruleset)
         iptables_do_command("-t mangle -X " CHAIN_AUTH_IS_DOWN);
@@ -457,6 +454,8 @@ iptables_fw_destroy(void)
     iptables_do_command("-t nat -F " CHAIN_TO_ROUTER);
     iptables_do_command("-t nat -F " CHAIN_TO_INTERNET);
     iptables_do_command("-t nat -F " CHAIN_GLOBAL);
+    iptables_do_command("-t nat -F " CHAIN_VALIDATE);
+    iptables_do_command("-t nat -F " CHAIN_KNOWN);
     iptables_do_command("-t nat -F " CHAIN_UNKNOWN);
     iptables_do_command("-t nat -X " CHAIN_AUTHSERVERS);
     iptables_do_command("-t nat -X " CHAIN_OUTGOING);
@@ -465,6 +464,8 @@ iptables_fw_destroy(void)
     iptables_do_command("-t nat -X " CHAIN_TO_ROUTER);
     iptables_do_command("-t nat -X " CHAIN_TO_INTERNET);
     iptables_do_command("-t nat -X " CHAIN_GLOBAL);
+    iptables_do_command("-t nat -X " CHAIN_VALIDATE);
+    iptables_do_command("-t nat -X " CHAIN_KNOWN);
     iptables_do_command("-t nat -X " CHAIN_UNKNOWN);
 
     /*
@@ -566,12 +567,19 @@ iptables_fw_access(fw_access_t type, const char *ip, const char *mac, int tag)
 
     switch (type) {
     case FW_ACCESS_ALLOW:
+        iptables_do_command("-t filter -A " CHAIN_VALIDATE " -m mac --mac-source %s -j ACCEPT", mac);
+        iptables_do_command("-t nat -A " CHAIN_VALIDATE " -m mac --mac-source %s -j ACCEPT", mac);
+
         iptables_do_command("-t mangle -A " CHAIN_OUTGOING " -s %s -m mac --mac-source %s -j MARK --set-mark %d", ip,
                             mac, tag);
         rc = iptables_do_command("-t mangle -A " CHAIN_INCOMING " -d %s -j ACCEPT", ip);
+
         break;
     case FW_ACCESS_DENY:
         /* XXX Add looping to really clear? */
+        iptables_do_command("-t filter -D " CHAIN_VALIDATE " -m mac --mac-source %s -j ACCEPT", mac);
+        iptables_do_command("-t nat -D " CHAIN_VALIDATE " -m mac --mac-source %s -j ACCEPT", mac);
+
         iptables_do_command("-t mangle -D " CHAIN_OUTGOING " -s %s -m mac --mac-source %s -j MARK --set-mark %d", ip,
                             mac, tag);
         rc = iptables_do_command("-t mangle -D " CHAIN_INCOMING " -d %s -j ACCEPT", ip);
