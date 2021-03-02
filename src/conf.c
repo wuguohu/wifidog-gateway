@@ -76,6 +76,7 @@ typedef enum {
     oDeltaTraffic,
     oAuthServer,
     oAuthServHostname,
+    oAuthServHostlogin,
     oAuthServSSLAvailable,
     oAuthServSSLPort,
     oAuthServHTTPPort,
@@ -132,6 +133,7 @@ static const struct {
     "syslogfacility", oSyslogFacility}, {
     "wdctlsocket", oWdctlSocket}, {
     "hostname", oAuthServHostname}, {
+    "hostlogin", oAuthServHostlogin}, {
     "sslavailable", oAuthServSSLAvailable}, {
     "sslport", oAuthServSSLPort}, {
     "httpport", oAuthServHTTPPort}, {
@@ -252,6 +254,7 @@ static void
 parse_auth_server(FILE * file, const char *filename, int *linenum)
 {
     char *host = NULL,
+        *hostlogin = NULL,
         *path = NULL,
         *loginscriptpathfragment = NULL,
         *portalscriptpathfragment = NULL,
@@ -316,6 +319,12 @@ parse_auth_server(FILE * file, const char *filename, int *linenum)
                 if (NULL != host)
                     free(host);
                 host = safe_strdup(p2);
+                break;
+            case oAuthServHostlogin:
+                /* Coverity rightfully pointed out we could have duplicates here. */
+                if (NULL != hostlogin)
+                    free(hostlogin);
+                hostlogin = safe_strdup(p2);
                 break;
             case oAuthServPath:
                 free(path);
@@ -383,6 +392,7 @@ parse_auth_server(FILE * file, const char *filename, int *linenum)
 
     /* Fill in struct */
     new->authserv_hostname = host;
+    new->authserv_hostlogin = hostlogin;
     new->authserv_use_ssl = ssl_available;
     new->authserv_path = path;
     new->authserv_login_script_path_fragment = loginscriptpathfragment;

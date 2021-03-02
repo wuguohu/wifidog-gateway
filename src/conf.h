@@ -90,6 +90,7 @@ extern pthread_mutex_t config_mutex;
  */
 typedef struct _auth_serv_t {
     char *authserv_hostname;    /**< @brief Hostname of the central server */
+    char *authserv_hostlogin;    /**< @brief Host login for login action */
     char *authserv_path;        /**< @brief Path where wifidog resides */
     char *authserv_login_script_path_fragment;  /**< @brief This is the script the user will be sent to for login. */
     char *authserv_portal_script_path_fragment; /**< @brief This is the script the user will be sent to after a successfull login. */
