@@ -160,7 +160,7 @@ http_callback_404(httpd * webserver, request * r, int error_code)
         }
 
         debug(LOG_INFO, "Captured %s requesting [%s] and re-directing them to login page", r->clientAddr, url);
-        http_send_redirect_to_auth(r, urlFragment, "Redirect to login page");
+        http_send_redirect_to_login(r, urlFragment, "Redirect to login page");
         free(urlFragment);
     }
     free(url);
@@ -205,6 +205,24 @@ http_callback_status(httpd * webserver, request * r)
  * @param urlFragment The end of the auth server URL to redirect to (the part after path)
  * @param text The text to include in the redirect header ant the mnual redirect title */
 void
+http_send_redirect_to_login(request * r, const char *urlFragment, const char *text)
+{
+    char *protocol = "http";
+    int port = 80;
+    t_auth_serv *auth_server = get_auth_server();
+
+    char *url = NULL;
+    safe_asprintf(&url, "%s://%s:%d%s%s",
+                  protocol, auth_server->authserv_hostlogin, port, auth_server->authserv_path, urlFragment);
+    http_send_redirect(r, url, text);
+    free(url);
+}
+
+/** @brief Convenience function to redirect the web browser to the auth server
+ * @param r The request
+ * @param urlFragment The end of the auth server URL to redirect to (the part after path)
+ * @param text The text to include in the redirect header ant the mnual redirect title */
+void
 http_send_redirect_to_auth(request * r, const char *urlFragment, const char *text)
 {
     char *protocol = NULL;
@@ -221,7 +239,7 @@ http_send_redirect_to_auth(request * r, const char *urlFragment, const char *tex
 
     char *url = NULL;
     safe_asprintf(&url, "%s://%s:%d%s%s",
-                  protocol, auth_server->authserv_hostlogin, port, auth_server->authserv_path, urlFragment);
+                  protocol, auth_server->authserv_hostname, port, auth_server->authserv_path, urlFragment);
     http_send_redirect(r, url, text);
     free(url);
 }
