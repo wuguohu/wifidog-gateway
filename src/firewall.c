@@ -132,6 +132,18 @@ _fw_deny_raw(const char *ip, const char *mac, const int mark)
     return iptables_fw_access(FW_ACCESS_DENY, ip, mac, mark);
 }
 
+int
+fw_add_whitelist(const char *mac)
+{
+    return iptables_fw_add_whitelist(mac);
+}
+
+int
+fw_remove_whitelist(const char *mac)
+{
+    return iptables_fw_remove_whitelist(mac);
+}
+
 /** Passthrough for clients when auth server is down */
 int
 fw_set_authdown(void)

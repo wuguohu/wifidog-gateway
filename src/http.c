@@ -307,6 +307,30 @@ http_callback_auth(httpd * webserver, request * r)
 }
 
 void
+http_callback_whitelist(httpd * webserver, request * r)
+{
+    httpVar *mac = httpdGetVariableByName(r, "mac");
+    httpVar *action = httpdGetVariableByName(r, "action");
+
+    if(mac && action){
+        if(!strcmp(action->value, "add")){
+            debug(LOG_INFO, "Add white list with mac %s", mac->value);
+            fw_add_whitelist(mac->value);
+            httpdOutput(r, "success");
+            return;
+        }else if(!strcmp(action->value, "remove")){
+            debug(LOG_INFO, "Remove white list with mac %s", mac->value);
+            fw_remove_whitelist(mac->value);
+            httpdOutput(r, "success");
+            return;
+        }
+    }
+    
+    httpdOutput(r, "failed");
+    return;
+}
+
+void
 http_callback_disconnect(httpd * webserver, request * r)
 {
     const s_config *config = config_get_config();

@@ -616,6 +616,25 @@ iptables_fw_access_host(fw_access_t type, const char *host)
     return rc;
 }
 
+int
+iptables_fw_add_whitelist(const char *mac)
+{
+    iptables_do_command("-t filter -A " CHAIN_KNOWN " -m mac --mac-source %s -j ACCEPT", mac);
+    iptables_do_command("-t nat -A " CHAIN_KNOWN " -m mac --mac-source %s -j ACCEPT", mac);
+
+    return 0;
+}
+
+int
+iptables_fw_remove_whitelist(const char *mac)
+{
+    iptables_do_command("-t filter -D " CHAIN_KNOWN " -m mac --mac-source %s -j ACCEPT", mac);
+    iptables_do_command("-t nat -D " CHAIN_KNOWN " -m mac --mac-source %s -j ACCEPT", mac);
+
+    return 0;
+}
+
+
 /** Set a mark when auth server is not reachable */
 int
 iptables_fw_auth_unreachable(int tag)

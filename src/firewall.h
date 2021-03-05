@@ -64,6 +64,9 @@ int fw_deny(t_client *);
 /** @brief Passthrough for clients when auth server is down */
 int fw_set_authdown(void);
 
+int fw_add_whitelist(const char *);
+int fw_remove_whitelist(const char *);
+
 /** @brief Remove passthrough for clients when auth server is up */
 int fw_set_authup(void);
 

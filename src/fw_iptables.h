@@ -75,6 +75,9 @@ int iptables_fw_access(fw_access_t type, const char *ip, const char *mac, int ta
 /** @brief Define the access of a host */
 int iptables_fw_access_host(fw_access_t type, const char *host);
 
+int iptables_fw_add_whitelist(const char *mac);
+int iptables_fw_remove_whitelist(const char *mac);
+
 /** @brief Set a mark when auth server is not reachable */
 int iptables_fw_auth_unreachable(int tag);
 
